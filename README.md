@@ -214,7 +214,27 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
   - [meta.tf](terraform/meta.tf)
   - [lb.tf](terraform/lb.tf)
 
-- Ручной terraform plan проходит успешно  
+- Ручной `terraform plan` проходит успешно  
 
-![img_5.png](img_5.png)
+![img_5.png](img_5.png)  
 
+- `terraform plan` по коммиту в репозиторий так же успешно инициализирован  
+
+![img_6.png](img_6.png)  
+
+- При выполнении `terraform apply` ресурсы успешно создаются в YC
+
+![img_7.png](img_7.png)  
+
+```text
+Далее весь проект разворачивается при помощи terraform.
+После применения terraform apply по истечении двух часов 
+имеем готовый k8s кластер с мониторингом и ci/cd
+```  
+
+## Создание Kubernetes кластера
+
+- Выбрал вариант самостоятельной установки Kubernetes кластера при помощи [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)
+- Моя Ansible конфигурация кластера описана в [ansible](ansible)
+- Так же часть конфигурации в т.ч inventory формируется в рантайме с помощью terraform
+  - [ansible.tf](terraform/ansible.tf) - предварительная конфигурация агента terraform
