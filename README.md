@@ -213,3 +213,8 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
   - [network.tf](terraform/network.tf)
   - [meta.tf](terraform/meta.tf)
   - [lb.tf](terraform/lb.tf)
+
+- Ручной terraform plan проходит успешно  
+
+![img_5.png](img_5.png)
+
