@@ -186,7 +186,7 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 В качестве бекенда выбрал Terraform Cloud  
 Предварительно в настройках GitHub разрешил доступ для Terraform Cloud  
 
-![img_2.png](img/img_2.png)  
+![img_2.png](img/img_2.png)
 
 Создал проект и workspace `stage` в TC  
 
