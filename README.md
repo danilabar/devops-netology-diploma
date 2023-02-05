@@ -179,28 +179,28 @@
 yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 ```  
 
-![img.png](img.png)  
+![img.png](img/img.png)  
 
-![img_1.png](img_1.png)  
+![img_1.png](img/img_1.png)  
 
 В качестве бекенда выбрал Terraform Cloud  
 Предварительно в настройках GitHub разрешил доступ для Terraform Cloud  
 
-![img_2.png](img_2.png)  
+![img_2.png](img/img_2.png)  
 
 Создал проект и workspace `stage` в TC  
 
-![img_3.png](img_3.png)  
+![img_3.png](img/img_3.png)  
 
-В настройках workspace-ов указал рабочий каталог для Terraform  
+В настройках workspace указал рабочий каталог для Terraform  
 
 Добавил в workspace переменные:  
-- `service_account_id` данные сервисного аккаунта
-- `DOCKER_USER_ID` - пользователь Docker Registry
-- `DOCKER_PASSWORD` - API ключ для доступа к Docker Registry (предварительно получив его в настройках аккаунта Docker Hub)
-- `JENKINS_ADMIN_PASSWORD` - пароль для доступа к UI JENKINS  
+- `service_account_id` данные сервисного аккаунта для деплоя ресурсов в yandex cloud
+- `DOCKER_USER_ID` - пользователь Docker Registry (используется при деплое ci/cd)
+- `DOCKER_PASSWORD` - API ключ для доступа к Docker Registry (предварительно получив его в настройках аккаунта Docker Hub)(используется при деплое ci/cd)
+- `JENKINS_ADMIN_PASSWORD` - пароль для доступа к UI JENKINS (используется при деплое ci/cd)  
 
-![img_4.png](img_4.png)  
+![img_4.png](img/img_4.png)  
 
 Все манифесты Terraform находятся в каталоге [terraform](terraform)  
 
@@ -212,27 +212,30 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 
 Ручной `terraform plan` проходит успешно  
 
-![img_5.png](img_5.png)  
+![img_5.png](img/img_5.png)  
 
 Автоматический`terraform plan` по коммиту в репозиторий так же успешно инициализирован  
 
-![img_6.png](img_6.png)  
+![img_6.png](img/img_6.png)  
 
 При выполнении `terraform apply` ресурсы успешно создаются в YC  
 
-![img_7.png](img_7.png)  
+![img_7.png](img/img_7.png)  
 
 ```text
 Далее весь проект разворачивается при помощи terraform.
-После применения terraform apply по истечении двух часов 
-имеем готовый k8s кластер с мониторингом и ci/cd
+После применения terraform apply по истечении двух часов имеем готовый k8s кластер с мониторингом и ci/cd
 ```  
+
+![img_9.png](img/img_9.png)  
+![img_10.png](img/img_10.png)  
+![img_11.png](img/img_11.png)  
 
 ## Создание Kubernetes кластера
 
 Выбрал вариант самостоятельной установки Kubernetes кластера при помощи [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)  
 
-Моя Ansible конфигурация кластера описана в [ansible](ansible)  
+Моя Ansible конфигурация кластера описана в каталоге [ansible](ansible)  
 
 Так же часть конфигурации в т.ч inventory формируется в рантайме с помощью terraform:
 - [ansible.tf](terraform/ansible.tf) - предварительное конфигурирование агента terraform и запуск ansible
@@ -241,11 +244,30 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
   
 Сформированный inventory  
 
-![img_8.png](img_8.png)  
+![img_8.png](img/img_8.png)  
 
 Проверка доступности кластера `kubectl get pods --all-namespaces`  
 
-СКРИН
+![img_12.png](img/img_12.png)  
+
+Дополнительно скопировал `/.kube/config` себе на локальную машину и проверил доступность кластера
+
+```bash
+scp -o 'StrictHostKeyChecking no' centos@51.250.9.89:/home/centos/.kube/config $HOME/.kube/config
+sed -i 's/127.0.0.1/51.250.9.89/g' $HOME/.kube/config
+kubectl get pods --all-namespaces
+```  
+
+![img_13.png](img/img_13.png)  
+
+### Особенности
+
+В ходе работы выяснил несколько особенностей связанных с запуском ansible на агенте terraform cloud:
+- Для доступа агента TC на хосты нужно сгенерировать ssh-ключ (по сути одноразовый, т.к. он уничтожается вместе с 
+агентом после завершения деплоя) и добавить его на разворачиваемые виртуалки вместе со своим. Но это в случае если не 
+хочется добавлять свой приватный ключ в terraform cloud
+- Из-за того, что имя домашнего каталога учётки агента TC слишком длинное, запуск ansible завершается ошибкой. 
+Это решено с помощью директивы `control_path` в [ansible.cfg](terraform/ansible.cfg)
 
 ## Создание тестового приложения
 
@@ -253,7 +275,7 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 
 Сборка образа приложения описана в [Dockerfile](https://github.com/danilabar/wonder_app/blob/main/Dockerfile)  
 
-Образ опубликован в [DockerHub](https://hub.docker.com/repository/docker/danilabar/wonder_app/general)
+Образ опубликован в [DockerHub](https://hub.docker.com/r/danilabar/wonder_app)
 
 ## Подготовка cистемы мониторинга и деплой приложения
 
@@ -261,22 +283,107 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 
 Конфигурации описаны в:
 - [monitoring.tf](terraform/monitoring.tf) - деплой `kube-prometheus` в кластер
-- [kube-prometheus](kube-prometheus) - манифесты kubernetes для деплоя, взяты как есть, кроме двух файлов
+- Каталог [kube-prometheus](kube-prometheus) - манифесты kubernetes для деплоя, взяты как есть, кроме двух файлов
   - [grafana-service.yaml](kube-prometheus/manifests/grafana-service.yaml) - настройка `nodePort`
   - [grafana-networkPolicy.yaml](kube-prometheus/manifests/grafana-networkPolicy.yaml) - настройка `ingress`  
 
-Grafana доступна и дашборды отображают состояние Kubernetes кластера  
+Grafana доступна [http://158.160.46.231:3000/](http://158.160.46.231:3000/) и дашборды отображают состояние Kubernetes кластера  
 
-СКРИН
+![img_14.png](img/img_14.png)  
+
+![img_32.png](img/img_32.png)  
 
 Для организации конфигурации тестового приложения создан [helm-chart](https://github.com/danilabar/wonder_app/tree/main/wonder-app-chart)  
 
 Тесовое приложение задеплоено в кластер и доступно по http
 
-СКРИН КУБЕРА
+![img_31.png](img/img_31.png)  
 
-СКРИН ХЕЛМА
+![img_30.png](img/img_30.png)  
 
-СКРИН HTTP
+![img_29.png](img/img_29.png)  
 
+## Установка и настройка CI/CD
 
+В качестве CI/CD выбрал [jenkins](https://www.jenkins.io/)  
+
+Конфигурации описаны в каталоге [jenkins](jenkins)  
+- Отдельно был собран собственный Docker образ jenkins [Dockerfile](jenkins/image/Dockerfile). В нем описаны:
+  - Установка kubectl, helm, docker
+  - Установка плагинов jenkins
+  - Отключение первоначальной конфигурации
+  - Использование плагина Configuration as Code
+    - Конфигурация jenkins описана в [casc.yaml](jenkins/image/casc.yaml)
+    - Конфигурация pipeline описана в [config.xml](jenkins/image/jobs/app-stage/config.xml)
+- Образ опубликован в [DockerHub](https://hub.docker.com/r/danilabar/jenkins-with-addons)  
+- [jenkins.tf](terraform/jenkins.tf) - деплой jenkins в кластер
+- Каталог [kube-deploy](jenkins/kube-deploy) - Манифесты kubernetes
+- В репозитории с тестовым приложением находится [Jenkinsfile](https://github.com/danilabar/wonder_app/blob/main/Jenkinsfile/Jenkinsfile) описывающий пайплайн
+
+Интерфейс jenkins доступен по [http://158.160.46.231:8080/](http://158.160.46.231:8080/)  
+
+![img_15.png](img/img_15.png)  
+
+### При любом коммите в репозиторие с тестовым приложением происходит сборка и отправка в регистр Docker образа
+
+#### Выполнен [коммит](https://github.com/danilabar/wonder_app/commit/adb4333e381fb88839f38812b2a5e2f9827e208e)  
+
+- Пайплайн  
+
+![img_22.png](img/img_22.png)  
+
+- DockerHub  
+
+![img_21.png](img/img_21.png)  
+
+#### Выполнен второй [коммит](https://github.com/danilabar/wonder_app/commit/290bbcc43feb8369eb069a3ca2193b2591cc71ac)
+
+- Пайплайн  
+
+![img_23.png](img/img_23.png)  
+
+- DockerHub  
+
+![img_24.png](img/img_24.png)  
+
+### При создании тега происходит сборка и отправка с соответствующим label в регистр, а также деплой соответствующего Docker образа в кластер Kubernetes
+
+#### Выполнен [коммит](https://github.com/danilabar/wonder_app/commit/7c325537775895d5f0b16430115eb592b7989fc4) с тегом 1.1.0  
+
+- Пайплайн  
+
+![img_17.png](img/img_17.png)  
+
+![img_18.png](img/img_18.png)  
+
+- DockerHub  
+
+![img_19.png](img/img_19.png)  
+
+- Приложение доступно по [http://158.160.46.231/](http://158.160.46.231/)  
+
+![img_20.png](img/img_20.png)
+
+#### Выполнен второй [коммит](https://github.com/danilabar/wonder_app/commit/396495b7286bdb97f25f5564435eed25902537ef) с тегом 1.2.4
+
+- Пайплайн  
+
+![img_25.png](img/img_25.png)  
+
+![img_26.png](img/img_26.png)  
+
+- DockerHub  
+
+![img_27.png](img/img_27.png)  
+
+- Приложение доступно по [http://158.160.46.231/](http://158.160.46.231/)  
+
+![img_28.png](img/img_28.png)  
+
+### Особенности
+
+- Первую сборку по ветке `main` нужно запустить вручную, тогда jenkins получит расписание для пайплайна по коммиту, 
+но самой сборки образа не произойдёт, т.к. пайплайн общий на два сценария и в нём используются триггеры по тегам и 
+условия для коммитов, а первая сборка ручная. Сборка по тегам при этом запускается автоматически, при обнаружении тегов.
+- При деплое jenkins дополнительно используется утилита `envsubst`, для того, что бы в [deployment.yaml](jenkins/kube-deploy/deployment.yaml) 
+некоторые параметры были использованы из переменных окружения.
