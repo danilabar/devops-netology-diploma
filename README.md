@@ -1,11 +1,5 @@
 # Дипломный практикум в Yandex.Cloud
 
- * [Создание облачной инфраструктуры](#создание-облачной-инфраструктуры)
- * [Создание Kubernetes кластера](#создание-kubernetes-кластера)
- * [Создание тестового приложения](#создание-тестового-приложения)
- * [Подготовка cистемы мониторинга и деплой приложения](#подготовка-cистемы-мониторинга-и-деплой-приложения)
- * [Установка и настройка CI/CD](#установка-и-настройка-cicd)
-
 <details><summary>Раскрыть для просмотра задания</summary>
 
   * [Цели:](#цели)
@@ -179,8 +173,8 @@
 
 ## Создание облачной инфраструктуры
 
-- Создал сервисный [аккаунт](https://cloud.yandex.ru/docs/cli/operations/authentication/service-account)
-- Создал авторизованный ключ
+Создал сервисный [аккаунт](https://cloud.yandex.ru/docs/cli/operations/authentication/service-account)  
+Создал авторизованный ключ  
 ```bash
 yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 ```  
@@ -189,40 +183,42 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 
 ![img_1.png](img_1.png)  
 
-- В качестве бекенда выбрал Terraform Cloud
-- Предварительно в настройках GitHub разрешил доступ для Terraform Cloud  
+В качестве бекенда выбрал Terraform Cloud  
+Предварительно в настройках GitHub разрешил доступ для Terraform Cloud  
 
 ![img_2.png](img_2.png)  
 
-- Создал проект и workspace `stage` в TC
+Создал проект и workspace `stage` в TC  
 
 ![img_3.png](img_3.png)  
 
-- В настройках workspace-ов указал рабочий каталог для Terraform
-- Добавил в workspace переменные
-  - `service_account_id` данные сервисного аккаунта
-  - `DOCKER_USER_ID` - пользователь Docker Registry
-  - `DOCKER_PASSWORD` - API ключ для доступа к Docker Registry (предварительно получив его в настройках аккаунта Docker Hub)
-  - `JENKINS_ADMIN_PASSWORD` - пароль для доступа к UI JENKINS  
+В настройках workspace-ов указал рабочий каталог для Terraform  
+
+Добавил в workspace переменные:  
+- `service_account_id` данные сервисного аккаунта
+- `DOCKER_USER_ID` - пользователь Docker Registry
+- `DOCKER_PASSWORD` - API ключ для доступа к Docker Registry (предварительно получив его в настройках аккаунта Docker Hub)
+- `JENKINS_ADMIN_PASSWORD` - пароль для доступа к UI JENKINS  
 
 ![img_4.png](img_4.png)  
 
-- Все манифесты Terraform находятся в каталоге [terraform](terraform)
-- Создание ресурсов YC в основном описано в:
-  - [main.tf](terraform/main.tf)
-  - [network.tf](terraform/network.tf)
-  - [meta.tf](terraform/meta.tf)
-  - [lb.tf](terraform/lb.tf)
+Все манифесты Terraform находятся в каталоге [terraform](terraform)  
 
-- Ручной `terraform plan` проходит успешно  
+Создание ресурсов YC в основном описано в:
+- [main.tf](terraform/main.tf)
+- [network.tf](terraform/network.tf)
+- [meta.tf](terraform/meta.tf)
+- [lb.tf](terraform/lb.tf)
+
+Ручной `terraform plan` проходит успешно  
 
 ![img_5.png](img_5.png)  
 
-- `terraform plan` по коммиту в репозиторий так же успешно инициализирован  
+Автоматический`terraform plan` по коммиту в репозиторий так же успешно инициализирован  
 
 ![img_6.png](img_6.png)  
 
-- При выполнении `terraform apply` ресурсы успешно создаются в YC
+При выполнении `terraform apply` ресурсы успешно создаются в YC  
 
 ![img_7.png](img_7.png)  
 
@@ -234,7 +230,53 @@ yc iam key create --service-account-id ajeqt1uae90pgp2ftkns --output key.json
 
 ## Создание Kubernetes кластера
 
-- Выбрал вариант самостоятельной установки Kubernetes кластера при помощи [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)
-- Моя Ansible конфигурация кластера описана в [ansible](ansible)
-- Так же часть конфигурации в т.ч inventory формируется в рантайме с помощью terraform
-  - [ansible.tf](terraform/ansible.tf) - предварительная конфигурация агента terraform
+Выбрал вариант самостоятельной установки Kubernetes кластера при помощи [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)  
+
+Моя Ansible конфигурация кластера описана в [ansible](ansible)  
+
+Так же часть конфигурации в т.ч inventory формируется в рантайме с помощью terraform:
+- [ansible.tf](terraform/ansible.tf) - предварительное конфигурирование агента terraform и запуск ansible
+- [inventory.tf](terraform/inventory.tf) - формирование inventory
+- [kubeconfig.tf](terraform/kubeconfig.tf) - доставка `/.kube/config` агенту terraform и проверка работы кластера
+  
+Сформированный inventory  
+
+![img_8.png](img_8.png)  
+
+Проверка доступности кластера `kubectl get pods --all-namespaces`  
+
+СКРИН
+
+## Создание тестового приложения
+
+Для тестового приложения создан отдельный Git репозиторий [wonder_app](https://github.com/danilabar/wonder_app)  
+
+Сборка образа приложения описана в [Dockerfile](https://github.com/danilabar/wonder_app/blob/main/Dockerfile)  
+
+Образ опубликован в [DockerHub](https://hub.docker.com/repository/docker/danilabar/wonder_app/general)
+
+## Подготовка cистемы мониторинга и деплой приложения
+
+Для деплоя системы мониторинга воспользовался пакетом [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)  
+
+Конфигурации описаны в:
+- [monitoring.tf](terraform/monitoring.tf) - деплой `kube-prometheus` в кластер
+- [kube-prometheus](kube-prometheus) - манифесты kubernetes для деплоя, взяты как есть, кроме двух файлов
+  - [grafana-service.yaml](kube-prometheus/manifests/grafana-service.yaml) - настройка `nodePort`
+  - [grafana-networkPolicy.yaml](kube-prometheus/manifests/grafana-networkPolicy.yaml) - настройка `ingress`  
+
+Grafana доступна и дашборды отображают состояние Kubernetes кластера  
+
+СКРИН
+
+Для организации конфигурации тестового приложения создан [helm-chart](https://github.com/danilabar/wonder_app/tree/main/wonder-app-chart)  
+
+Тесовое приложение задеплоено в кластер и доступно по http
+
+СКРИН КУБЕРА
+
+СКРИН ХЕЛМА
+
+СКРИН HTTP
+
+
